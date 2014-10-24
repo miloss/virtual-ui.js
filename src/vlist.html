@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, width=device-width">
+    <link rel="stylesheet" href="css/vlist.css">
+</head>
+<body>
+<script type="text/javascript" src="js/vlist.js"></script>
+<style>
+    .vrow {
+        border-bottom: solid 1px #dbd9d9;
+    }
+</style>
+<div>
+    <button onclick="list.refresh();">Refresh</button>
+</div>
+
+<div>
+    <div id="container" style="width: 300px; height: 200px; border: 1px solid black"></div>
+</div>
+
+<script>
+    function renderer(index, row) {
+        row.style.color = '#'+Math.floor(Math.random()*16777215).toString(16);
+        row.innerHTML = 'ROW #' + index;
+    }
+
+    var list = new VList(document.getElementById('container'), renderer, 100000);
+</script>
+</body>
+</html>
