@@ -1,13 +1,4 @@
-// Some code taken from https://github.com/sergi/virtual-list, many thanks!!
-
-/**
- * Creates a virtually-rendered scrollable list.
- * @param {Element} container
- * @param {Function} renderer
- * @param {Number} [rowCount]
- * @param {Number} [rowHeight]
- * @constructor
- */
+// Some code taken from https://github.com/sergi/virtual-list
 function VList(container, renderer, rowCount, rowHeight) {
     rowCount = rowCount || 0;
     rowHeight = rowHeight || 30;
@@ -46,7 +37,6 @@ VList.prototype._rowCount = 0;
 VList.prototype._visibleRows = 0;
 VList.prototype._cachedRows = 0;
 VList.prototype._scroller = null;
-VList.prototype._itemHeight = 0;
 VList.prototype._updateCounter = 0;
 VList.prototype._lastRenderScrollTop = 0;
 VList.prototype._lastScrolledTime = 0;
