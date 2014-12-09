@@ -15,16 +15,54 @@
 </style>
 
 <div>
-    <div id="container" style="width: 300px; height: 200px; border: 1px solid black"></div>
+    <button onclick="tree.refresh();">Refresh</button>
+</div>
+
+<div>
+    <div id="container" style="width: 500px; height: 200px; border: 1px solid black"></div>
 </div>
 
 <script>
-    function renderer(index, row) {
+    function renderer(node, row) {
+        row.innerHTML = 'NODE #' + node.id;
         row.style.color = '#'+Math.floor(Math.random()*16777215).toString(16);
-        row.innerHTML = 'NODE #' + index;
     }
 
-    var list = new VTree(document.getElementById('container'), renderer);
+    function TreeNodeNamed(id) {
+        this.id = id;
+    }
+    TreeNodeNamed.prototype = Object.create(TreeNode.prototype);
+    TreeNodeNamed.prototype.id = null;
+
+    var tree = new VTree(document.getElementById('container'), renderer, 'vrow');
+    tree.beginUpdate();
+    for (var i = 0; i < 10; ++i) {
+        var tnode0 = new TreeNodeNamed(i.toString());
+        tnode0.expanded = true;
+        tree.appendNode(null, tnode0);
+        for (var k = 0; k < 10; ++k) {
+            var tnode1 = new TreeNodeNamed(i.toString() + '.' + k.toString());
+            tnode1.expanded = true;
+            tree.appendNode(tnode0, tnode1);
+            for (var j = 0; j < 10; ++j) {
+                var tnode2 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString());
+                tnode2.expanded = true;
+                tree.appendNode(tnode1, tnode2);
+                for (var s = 0; s < 10; ++s) {
+                    var tnode3 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString() + '.' + s.toString());
+                    tnode3.expanded = true;
+                    tree.appendNode(tnode2, tnode3);
+                    for (var l = 0; l < 10; ++l) {
+                        var tnode4 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString() + '.' + s.toString() + '.' + l.toString());
+                        //tnode4.expanded = true;
+                        tree.appendNode(tnode3, tnode4);
+                    }
+                }
+            }
+        }
+    }
+    tree.endUpdate();
+    tree.refresh();
 </script>
 </body>
 </html>

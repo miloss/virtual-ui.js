@@ -98,7 +98,6 @@
             var scrollTop = this._container.scrollTop;
             var first = parseInt(scrollTop / this._rowHeight) - this._visibleRows;
             this._renderViewport(first < 0 ? 0 : first);
-            this._cleanViewport();
         }
         return this;
     };
