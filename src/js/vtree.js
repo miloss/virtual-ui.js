@@ -87,7 +87,7 @@
         }
     };
 
-    function VTree(container, renderer, nodeStyle) {
+    function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle) {
         container.style.overflow = 'scroll';
         this._containerWidth = parseInt(container.clientWidth);
 
@@ -107,11 +107,22 @@
         var lineHeight = parseInt(style.lineHeight);
         this._rowHeight = lineHeight ? lineHeight : VTree.DEFAULT_LINE_HEIGHT;
         container.removeChild(testRow);
+
+        if (expandStyle) {
+            this._expandStyle = expandStyle;
+        }
+
+        if (expandRenderer) {
+            this._expandRenderer = expandRenderer;
+        }
     }
 
     VTree.DEFAULT_ROW_STYLE = 'vrow';
     VTree.DEFAULT_PADDING = 40;
     VTree.DEFAULT_LINE_HEIGHT = 35;
+
+    VTree.COLLAPSE_ID = "clpsId";
+    VTree.EXPAND_ID = "xpndId";
 
     VTree.prototype = Object.create(VList.prototype);
 
@@ -120,6 +131,7 @@
     VTree.prototype._paddingLeft = '0px';
     VTree.prototype._containerWidth = 0;
     VTree.prototype._expandedWidth = 0;
+    VTree.prototype._expandStyle = null;
 
     VTree.prototype.handleChange = function (change, node) {
         if (change == TreeNode._Change.ExpandedSet || change == TreeNode._Change.ExpandedRemoved) {
@@ -244,11 +256,15 @@
                     var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
                     row.style.width = width.toString() + 'px';
                     if (node.expanded) {
-                        var arrow = document.createElement('span');
-                        arrow.innerHTML = '&#9660;';
-                        row.appendChild(arrow);
+                        var collapse = document.createElement('span');
+                        collapse.id = VTree.COLLAPSE_ID;
+                        if (this._expandStyle) {
+                            collapse.classList.add(this._expandStyle);
+                        }
+                        this._expandRenderer(collapse);
+                        row.appendChild(collapse);
                         row.addEventListener('click', function (e) {
-                            if (e.target.nodeName === "SPAN") {
+                            if (e.target.id === VTree.COLLAPSE_ID) {
                                 if (this.expanded) {
                                     this.expanded = false;
                                     this.handleChange(TreeNode._Change.ExpandedSet, this);
@@ -256,11 +272,15 @@
                             }
                         }.bind(node));
                     } else if (node.firstChild) {
-                        var arrow = document.createElement('span');
-                        arrow.innerHTML = '&#9658;';
-                        row.appendChild(arrow);
+                        var expand = document.createElement('span');
+                        expand.id = VTree.EXPAND_ID;
+                        if (this._expandStyle) {
+                            expand.classList.add(this._expandStyle);
+                        }
+                        this._expandRenderer(expand);
+                        row.appendChild(expand);
                         row.addEventListener('click', function (e) {
-                            if (e.target.nodeName === "SPAN") {
+                            if (e.target.id === VTree.EXPAND_ID) {
                                 if (!this.expanded) {
                                     this.expanded = true;
                                     this.handleChange(TreeNode._Change.ExpandedRemoved, this);
@@ -279,6 +299,14 @@
             }
 
             this._container.appendChild(fragment);
+        }
+    };
+
+    VTree.prototype._expandRenderer = function (elem) {
+        if (elem.id === VTree.COLLAPSE_ID) {
+            elem.innerHTML = '&#9660;';
+        } else if (elem.id === VTree.EXPAND_ID) {
+            elem.innerHTML = '&#9658;';
         }
     };
 
