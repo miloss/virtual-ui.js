@@ -87,6 +87,16 @@
         }
     };
 
+    TreeNode.prototype.handleExpand = function (e) {
+        if (e.target.id === VTree.COLLAPSE_ID && this.expanded) {
+            this.expanded = false;
+            this.handleChange(TreeNode._Change.ExpandedSet, this);
+        } else if (e.target.id === VTree.EXPAND_ID && !this.expanded) {
+            this.expanded = true;
+            this.handleChange(TreeNode._Change.ExpandedRemoved, this);
+        }
+    };
+
     function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle) {
         container.style.overflow = 'scroll';
         this._containerWidth = parseInt(container.clientWidth);
@@ -255,38 +265,19 @@
                     // TODO: calculate and use this._expandedWidth
                     var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
                     row.style.width = width.toString() + 'px';
-                    if (node.expanded) {
-                        var collapse = document.createElement('span');
-                        collapse.id = VTree.COLLAPSE_ID;
-                        if (this._expandStyle) {
-                            collapse.classList.add(this._expandStyle);
+                    if (node.expanded || node.firstChild) {
+                        var expandElem = document.createElement('span');
+                        if (node.expanded) {
+                            expandElem.id = VTree.COLLAPSE_ID;
+                        } else { // node.firstChild
+                            expandElem.id = VTree.EXPAND_ID;
                         }
-                        this._expandRenderer(collapse);
-                        row.appendChild(collapse);
-                        row.addEventListener('click', function (e) {
-                            if (e.target.id === VTree.COLLAPSE_ID) {
-                                if (this.expanded) {
-                                    this.expanded = false;
-                                    this.handleChange(TreeNode._Change.ExpandedSet, this);
-                                }
-                            }
-                        }.bind(node));
-                    } else if (node.firstChild) {
-                        var expand = document.createElement('span');
-                        expand.id = VTree.EXPAND_ID;
                         if (this._expandStyle) {
-                            expand.classList.add(this._expandStyle);
+                            expandElem.classList.add(this._expandStyle);
                         }
-                        this._expandRenderer(expand);
-                        row.appendChild(expand);
-                        row.addEventListener('click', function (e) {
-                            if (e.target.id === VTree.EXPAND_ID) {
-                                if (!this.expanded) {
-                                    this.expanded = true;
-                                    this.handleChange(TreeNode._Change.ExpandedRemoved, this);
-                                }
-                            }
-                        }.bind(node));
+                        this._expandRenderer(expandElem);
+                        row.appendChild(expandElem);
+                        row.addEventListener('click', node.handleExpand.bind(node));
                     }
                     this._renderer(node, row);
                     fragment.appendChild(row);
