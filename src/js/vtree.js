@@ -2,6 +2,11 @@
     function TreeNode() {
     }
 
+    TreeNode._Change = {
+        ExpandedSet: 1,
+        ExpandedRemoved: 2
+    };
+
     TreeNode.prototype.parent = null;
     TreeNode.prototype.previous = null;
     TreeNode.prototype.next = null;
@@ -68,28 +73,40 @@
 
     TreeNode.prototype.getNestLevel = function () {
         var level = 0;
-        for (var parent = this.parent; parent != null; parent = parent.parent) {
+        for (var parent = this.parent; parent != null && (parent instanceof TreeNode); parent = parent.parent) {
             ++level;
         }
         return level;
     };
 
+    TreeNode.prototype.handleChange = function (change, node) {
+        if (change == TreeNode._Change.ExpandedSet || change == TreeNode._Change.ExpandedRemoved) {
+            if (this.parent) {
+                this.parent.handleChange(change, node);
+            }
+        }
+    };
+
     function VTree(container, renderer, nodeStyle) {
+        container.style.overflow = 'scroll';
+        this._containerWidth = parseInt(container.clientWidth);
+
         VList.call(this, container, renderer, 0, 0);
         this._root = new TreeNode();
         this._root.expanded = true;
+        this._root.parent = this;
 
         var testRow = document.createElement('div');
         this._rowStyle = nodeStyle ? nodeStyle : VTree.DEFAULT_ROW_STYLE;
         testRow.classList.add(this._rowStyle);
         testRow.style.display = 'none';
-        document.body.appendChild(testRow);
+        container.appendChild(testRow);
         var style = getComputedStyle(testRow);
         var padding = parseInt(style.paddingLeft);
         this._paddingLeft = padding ? padding : VTree.DEFAULT_PADDING;
         var lineHeight = parseInt(style.lineHeight);
         this._rowHeight = lineHeight ? lineHeight : VTree.DEFAULT_LINE_HEIGHT;
-        document.body.removeChild(testRow);
+        container.removeChild(testRow);
     }
 
     VTree.DEFAULT_ROW_STYLE = 'vrow';
@@ -101,7 +118,31 @@
     VTree.prototype._root = null;
     VTree.prototype._rowStyle = null;
     VTree.prototype._paddingLeft = '0px';
+    VTree.prototype._containerWidth = 0;
+    VTree.prototype._expandedWidth = 0;
 
+    VTree.prototype.handleChange = function (change, node) {
+        if (change == TreeNode._Change.ExpandedSet || change == TreeNode._Change.ExpandedRemoved) {
+            this._updateRowCount();
+            this._updateScroller();
+            this.render();
+        }
+    };
+
+    VTree.prototype.render = function () {
+        if (this._scrollTimerId === null) {
+            this._scrollTimerId = setTimeout(function () {
+                if (Date.now() - this._lastCleanedTime > 100) {
+                    this._cleanViewport();
+                    this._lastCleanedTime = Date.now();
+                }
+                this._scrollTimerId = null;
+            }.bind(this), 300);
+        }
+
+        this._render();
+        this._lastRenderScrollTop = this._container.scrollTop;
+    };
 
     VTree.prototype.appendNode = function (parent, node) {
         return this._insertNodeBefore(parent || this._root, null, node);
@@ -136,8 +177,11 @@
         node.previous = null;
         node.next = null;
 
-        // TODO: remove this, and add expand eventListener instead
-        --this._rowCount;
+        if (node.expanded && node.firstChild) {
+            this._updateRowCount();
+        } else if (parent.expanded) {
+            --this._rowCount;
+        }
     };
 
     VTree.prototype._insertNodeBefore = function (parent, reference, child) {
@@ -171,8 +215,11 @@
             parent.lastChild = child;
         }
 
-        // TODO: remove this, and add expand eventListener instead
-        ++this._rowCount;
+        if (child.expanded && child.firstChild) {
+            this._updateRowCount();
+        } else if (parent.expanded) {
+            ++this._rowCount;
+        }
 
         return this;
     };
@@ -181,16 +228,46 @@
     VTree.prototype._renderViewport = function (index) {
         if (this._rowCount && this._renderer && this._rowHeight) {
             var lastIndex = Math.min(this._rowCount, index + this._cachedRows);
-
             var fragment = document.createDocumentFragment();
 
+            // TODO: change it with traversing through tree from node with idx1 to node with idx2 without getting
+            // node by idx each time
             for (var i = index; i < lastIndex; i++) {
                 var node = this._getNodeByIdx(i + 1, true);
                 if (node) {
                     var row = document.createElement('div');
                     row.classList.add(this._rowStyle);
                     row.style.top = (i * this._rowHeight) + 'px';
-                    row.style.paddingLeft = (this._paddingLeft * (node.getNestLevel() - 1)).toString() + 'px';
+                    var padding = this._paddingLeft * (node.getNestLevel() - 1);
+                    row.style.paddingLeft = padding.toString() + 'px';
+                    // TODO: calculate and use this._expandedWidth
+                    var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
+                    row.style.width = width.toString() + 'px';
+                    if (node.expanded) {
+                        var arrow = document.createElement('span');
+                        arrow.innerHTML = '&#9660;';
+                        row.appendChild(arrow);
+                        row.addEventListener('click', function (e) {
+                            if (e.target.nodeName === "SPAN") {
+                                if (this.expanded) {
+                                    this.expanded = false;
+                                    this.handleChange(TreeNode._Change.ExpandedSet, this);
+                                }
+                            }
+                        }.bind(node));
+                    } else if (node.firstChild) {
+                        var arrow = document.createElement('span');
+                        arrow.innerHTML = '&#9658;';
+                        row.appendChild(arrow);
+                        row.addEventListener('click', function (e) {
+                            if (e.target.nodeName === "SPAN") {
+                                if (!this.expanded) {
+                                    this.expanded = true;
+                                    this.handleChange(TreeNode._Change.ExpandedRemoved, this);
+                                }
+                            }
+                        }.bind(node));
+                    }
                     this._renderer(node, row);
                     fragment.appendChild(row);
                 }
@@ -205,9 +282,13 @@
         }
     };
 
-    VTree.prototype._calcExpandedRawCount = function () {
-        // TODO: calculate when expand/collapse is clicked
-        this._rowCount = res;
+    VTree.prototype._updateRowCount = function () {
+        var i = 0;
+        this._root.acceptChildren(function(node){
+            ++i;
+            return true;
+        }, true);
+        this._rowCount = i;
     };
 
     VTree.prototype._getNodeByIdx = function (idx, expandedOnly) {

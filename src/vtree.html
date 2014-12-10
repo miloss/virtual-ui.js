@@ -24,7 +24,7 @@
 
 <script>
     function renderer(node, row) {
-        row.innerHTML = 'NODE #' + node.id;
+        row.innerHTML = row.innerHTML + 'NODE #' + node.id;
         row.style.color = '#'+Math.floor(Math.random()*16777215).toString(16);
     }
 
@@ -54,7 +54,6 @@
                     tree.appendNode(tnode2, tnode3);
                     for (var l = 0; l < 10; ++l) {
                         var tnode4 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString() + '.' + s.toString() + '.' + l.toString());
-                        //tnode4.expanded = true;
                         tree.appendNode(tnode3, tnode4);
                     }
                 }

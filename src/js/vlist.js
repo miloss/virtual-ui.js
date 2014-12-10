@@ -18,7 +18,7 @@
         this.beginUpdate();
 
         if (renderer) {
-            this.renderer(renderer);
+            this._renderer(renderer);
         }
 
         if (rowHeight) {
@@ -40,15 +40,15 @@
     VList.prototype._scroller = null;
     VList.prototype._updateCounter = 0;
     VList.prototype._lastRenderScrollTop = 0;
-    VList.prototype._lastScrolledTime = 0;
+    VList.prototype._lastCleanedTime = 0;
     VList.prototype._scrollTimerId = null;
 
-    VList.prototype.renderer = function (renderer) {
+    VList.prototype._renderer = function (renderer) {
         if (!arguments.length) {
             return this._renderer;
         } else {
             this._renderer = renderer;
-            this.render();
+            this._render();
             return this;
         }
     };
@@ -60,7 +60,7 @@
             this._rowHeight = rowHeight;
             this._updateVisibleRows();
             this._updateScroller();
-            this.render();
+            this._render();
             return this;
         }
     };
@@ -71,7 +71,7 @@
         } else {
             this._rowCount = rowCount;
             this._updateScroller();
-            this.render();
+            this._render();
             return this;
         }
     };
@@ -82,18 +82,18 @@
 
     VList.prototype.endUpdate = function () {
         if (--this._updateCounter === 0) {
-            this.render();
+            this._render();
         }
     };
 
     VList.prototype.refresh = function () {
         this._updateVisibleRows();
         this._updateScroller();
-        this.render();
+        this._render();
         return this;
     };
 
-    VList.prototype.render = function () {
+    VList.prototype._render = function () {
         if (this._updateCounter === 0) {
             var scrollTop = this._container.scrollTop;
             var first = parseInt(scrollTop / this._rowHeight) - this._visibleRows;
@@ -114,11 +114,11 @@
 
     VList.prototype._onScroll = function (e) {
         e.preventDefault();
-
         if (this._scrollTimerId === null) {
             this._scrollTimerId = setTimeout(function () {
-                if (Date.now() - this._lastScrolledTime > 100) {
+                if (Date.now() - this._lastCleanedTime > 100) {
                     this._cleanViewport();
+                    this._lastCleanedTime = Date.now();
                 }
                 this._scrollTimerId = null;
             }.bind(this), 300);
@@ -126,11 +126,9 @@
 
         var scrollTop = this._container.scrollTop;
         if (!this._lastRenderScrollTop || Math.abs(scrollTop - this._lastRenderScrollTop) > this._scrollCacheSize) {
-            this.render();
+            this._render();
             this._lastRenderScrollTop = scrollTop;
         }
-
-        this._lastScrolledTime = Date.now();
     };
 
     VList.prototype._renderViewport = function (index) {
