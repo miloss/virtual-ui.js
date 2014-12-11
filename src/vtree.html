@@ -10,7 +10,17 @@
 <script type="text/javascript" src="js/vtree.js"></script>
 <style>
     .vrow {
+        user-select: 'all';
         border-bottom: solid 1px #dbd9d9;
+    }
+    .insertInto {
+        color: lightskyblue;
+    }
+    .separator {
+        height: 3px;
+        color: mediumblue;
+        line-height: 2px;
+        border-top: solid 2px mediumblue;
     }
 </style>
 
@@ -25,7 +35,7 @@
 <script>
     function renderer(node, row) {
         row.innerHTML += 'NODE #' + node.id;
-        row.style.color = '#'+Math.floor(Math.random()*16777215).toString(16);
+        //row.style.color = '#'+Math.floor(Math.random()*16777215).toString(16);
     }
 
     function TreeNodeNamed(id) {

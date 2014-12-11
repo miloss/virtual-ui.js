@@ -135,11 +135,19 @@
         if (expandRenderer) {
             this._expandRenderer = expandRenderer;
         }
+
+        this._freeHeight = VTree.DEFAULT_FREEZONE_HEIGHT;
+        this._insertIntoStyle = VTree.DEFAULT_INSERTINTO_STYLE;
+        this._separatorStyle = VTree.DEFAULT_SEPARATOR_STYLE;
+        this._specCounter = 0;
     }
 
     VTree.DEFAULT_ROW_STYLE = 'vrow';
-    VTree.DEFAULT_PADDING = 40;
-    VTree.DEFAULT_LINE_HEIGHT = 35;
+    VTree.DEFAULT_PADDING = 50;
+    VTree.DEFAULT_LINE_HEIGHT = 30;
+    VTree.DEFAULT_FREEZONE_HEIGHT = 7;
+    VTree.DEFAULT_SEPARATOR_STYLE = 'separator';
+    VTree.DEFAULT_INSERTINTO_STYLE = 'insertInto';
 
     VTree.COLLAPSE_ID = "clpsId";
     VTree.EXPAND_ID = "xpndId";
@@ -199,11 +207,14 @@
      */
     VTree.prototype._nodeCount = 0;
     VTree.prototype._rowStyle = null;
-    VTree.prototype._paddingLeft = '0px';
+    VTree.prototype._paddingLeft = 0;
     VTree.prototype._containerWidth = 0;
     VTree.prototype._expandedWidth = 0;
     VTree.prototype._expandStyle = null;
     VTree.prototype._dragNode = null;
+    VTree.prototype._freeHeight = 0;
+    VTree.prototype._separatorStyle = null;
+    VTree.prototype._insertIntoStyle = null;
 
     /** override */
     VTree.prototype.endUpdate = function () {
@@ -348,6 +359,11 @@
     };
 
     /** override */
+    VList.prototype._updateScroller = function () {
+        this._scroller.style.height = (this._rowCount * this._rowHeight + this._freeHeight).toString() + 'px';
+    };
+
+    /** override */
     VTree.prototype._renderViewport = function (index) {
         if (this._rowCount && this._renderer && this._rowHeight) {
             var lastIndex = Math.min(this._rowCount, index + this._cachedRows);
@@ -359,7 +375,7 @@
                 var row = document.createElement('div');
                 row.id = VTree.ROW_ID;
                 row.classList.add(this._rowStyle);
-                row.style.top = (i * this._rowHeight) + 'px';
+                row.style.top = (i * this._rowHeight).toString() + 'px';
                 var padding = this._paddingLeft * (node.getNestLevel() - 1);
                 row.style.paddingLeft = padding.toString() + 'px';
                 // TODO: calculate and use this._expandedWidth
@@ -383,9 +399,23 @@
                 row.addEventListener('dragstart', this.nodeDragStart.bind(this, node));
                 row.addEventListener('dragenter', this.nodeDragEnter.bind(this, node));
                 row.addEventListener('dragover', this.nodeDragOver.bind(this, node));
+                row.addEventListener('dragleave', this.nodeDragLeave.bind(this, node));
                 row.addEventListener('drop', this.nodeDropHere.bind(this, node));
+                row._specCounter = 0;
                 this._renderer(node, row);
                 fragment.appendChild(row);
+            }
+
+            if (lastIndex == this._rowCount) {
+                var freeZone = document.createElement('div');
+                freeZone.style.position = 'absolute';
+                freeZone.style.height = this._freeHeight.toString() + 'px';
+                freeZone.style.top = (lastIndex * this._rowHeight).toString() + 'px';
+                freeZone.style.width = this._containerWidth.toString() + 'px';
+                freeZone.addEventListener('dragenter', this.nodeDragEnter.bind(this, this._root));
+                freeZone.addEventListener('dragover', this.nodeDragOver.bind(this, this._root));
+                freeZone.addEventListener('drop', this.nodeDropHere.bind(this, this._root));
+                fragment.appendChild(freeZone);
             }
 
             for (var j = 1, l = this._container.childNodes.length; j < l; j++) {
@@ -475,21 +505,48 @@
 
     VTree.prototype.nodeDragEnter = function (node, e) {
         e.preventDefault();
+        if (!e.currentTarget._specCounter) {
+            e.currentTarget._specCounter = 1;
+        } else {
+            ++e.currentTarget._specCounter;
+        }
+        if (this.dropHereAllowed(node) && node !== this._root) {
+            e.currentTarget.classList.add(this._insertIntoStyle);
+        }
+        return false;
     };
 
     VTree.prototype.nodeDragOver = function (node, e) {
         e.preventDefault();
+        return false;
+    };
+
+    VTree.prototype.nodeDragLeave = function (node, e) {
+        e.preventDefault();
+        if (e.currentTarget._specCounter) {
+            --e.currentTarget._specCounter;
+        }
+        if (this.dropHereAllowed(node) && node !== this._root && !e.currentTarget._specCounter) {
+            e.currentTarget.classList.remove(this._insertIntoStyle);
+        }
+        return false;
     };
 
     VTree.prototype.nodeDropHere = function (node, e) {
-        e.preventDefault();
-        if (this._dragNode && this._dragNode !== node && !this.nodeHasSomeParent(node, this._dragNode)) {
+        e.currentTarget._specCounter = 0;
+        if (this.dropHereAllowed(node)) {
             this.beginUpdate();
             this.removeNode(this._dragNode);
             this.appendNode(node, this._dragNode);
             this._dragNode = null;
             this.endUpdate();
         }
+        e.stopPropagation();
+        return false;
+    };
+
+    VTree.prototype.dropHereAllowed = function (node) {
+        return this._dragNode && this._dragNode !== node && !this.nodeHasSomeParent(node, this._dragNode);
     };
 
     _.TreeNode = TreeNode;
