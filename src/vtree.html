@@ -36,23 +36,23 @@
 
     var tree = new VTree(document.getElementById('container'), renderer, 'vrow', null, 'vexpand');
     tree.beginUpdate();
-    for (var i = 0; i < 10; ++i) {
+    for (var i = 0; i < 3; ++i) {
         var tnode0 = new TreeNodeNamed(i.toString());
         tnode0.expanded = true;
         tree.appendNode(null, tnode0);
-        for (var k = 0; k < 10; ++k) {
+        for (var k = 0; k < 3; ++k) {
             var tnode1 = new TreeNodeNamed(i.toString() + '.' + k.toString());
             tnode1.expanded = true;
             tree.appendNode(tnode0, tnode1);
-            for (var j = 0; j < 10; ++j) {
+            for (var j = 0; j < 2; ++j) {
                 var tnode2 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString());
                 tnode2.expanded = true;
                 tree.appendNode(tnode1, tnode2);
-                for (var s = 0; s < 10; ++s) {
+                for (var s = 0; s < 2; ++s) {
                     var tnode3 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString() + '.' + s.toString());
                     tnode3.expanded = true;
                     tree.appendNode(tnode2, tnode3);
-                    for (var l = 0; l < 10; ++l) {
+                    for (var l = 0; l < 1; ++l) {
                         var tnode4 = new TreeNodeNamed(i.toString() + '.' + k.toString() + '.' + j.toString() + '.' + s.toString() + '.' + l.toString());
                         tree.appendNode(tnode3, tnode4);
                     }
