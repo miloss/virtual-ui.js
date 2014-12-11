@@ -17,20 +17,20 @@
     /**
      * Accept a visitor on this container's children
      * @param {Function} visitor
-     * @param {Boolean} expandedOnly
+     * @param {Boolean} visibleOnly
      * @param {Boolean} reverse - walk through children in reverse order
      * @param {Boolean} any - if true, all the children will be processed,
      * and if the result of one child is true, the overall result will be true
      * @return {Boolean}
      * @version 1.0
      */
-    TreeNode.prototype.acceptChildren = function (visitor, expandedOnly, reverse, any) {
+    TreeNode.prototype.acceptChildren = function (visitor, visibleOnly, reverse, any) {
         var res = !any;
-        if (!expandedOnly || this.expanded) {
+        if (!visibleOnly || this.expanded) {
             var childRes;
             if (reverse) {
                 for (var child = this.lastChild; child != null; child = child.previous) {
-                    childRes = child.accept(visitor, expandedOnly, reverse, any);
+                    childRes = child.accept(visitor, visibleOnly, reverse, any);
                     if (childRes === false && !any) {
                         return false;
                     } else if (childRes === true && any) {
@@ -39,7 +39,7 @@
                 }
             } else {
                 for (var child = this.firstChild; child != null; child = child.next) {
-                    childRes = child.accept(visitor, expandedOnly, reverse, any);
+                    childRes = child.accept(visitor, visibleOnly, reverse, any);
                     if (childRes === false && !any) {
                         return false;
                     } else if (childRes === true && any) {
@@ -57,18 +57,18 @@
      * node as first parameter. The function may return a boolean value indicating whether to
      * return visiting (true) or whether to cancel visiting (false). Not returning anything or
      * returning anything else than a Boolean will be ignored.
-     * @param {Boolean} expandedOnly
+     * @param {Boolean} visibleOnly
      * @param {Boolean} reverse - walk through children in reverse order
      * @param {Boolean} any - if true, all the children will be processed,
      * and if the result of one child is true, the overall result will be true
      * @return {Boolean} result of visiting (false = canceled, true = went through)
      */
-    TreeNode.prototype.accept = function (visitor, expandedOnly, reverse, any) {
+    TreeNode.prototype.accept = function (visitor, visibleOnly, reverse, any) {
         if (visitor.call(null, this) === false) {
             return false;
         }
 
-        return this.acceptChildren(visitor, expandedOnly, reverse, any);
+        return this.acceptChildren(visitor, visibleOnly, reverse, any);
     };
 
     TreeNode.prototype.getNestLevel = function () {
@@ -136,7 +136,57 @@
 
     VTree.prototype = Object.create(VList.prototype);
 
+    VTree.IdxIterator = function (vtree, firstIdx, lastIdx, visibleOnly) {
+        this._vtree = vtree;
+        this._firstIdx = firstIdx ? firstIdx : 1;
+        if (visibleOnly) {
+            this._lastIdx = lastIdx && lastIdx <= this._vtree._rowCount ? lastIdx : this._vtree._rowCount;
+        } else {
+            this._lastIdx = lastIdx && lastIdx <= this._vtree._nodeCount ? lastIdx : this._vtree._nodeCount;
+        }
+        this._visibleOnly = !!visibleOnly;
+    };
+
+    VTree.IdxIterator.prototype._vtree = null;
+    VTree.IdxIterator.prototype._firstIdx = 0;
+    VTree.IdxIterator.prototype._lastIdx = 0;
+    VTree.IdxIterator.prototype._visibleOnly = false;
+    VTree.IdxIterator.prototype._curNode = null;
+    VTree.IdxIterator.prototype._curIdx = 0;
+
+    VTree.IdxIterator.prototype.getFirstNode = function () {
+        if (this._firstIdx <= this._lastIdx) {
+            this._curIdx = this._firstIdx;
+            this._curNode = this._vtree._getNodeByIdx(this._curIdx, this._visibleOnly);
+        } else {
+            this._curIdx = this._lastIdx + 1;
+            this._curNode = null;
+        }
+        return this._curNode;
+    };
+
+    VTree.IdxIterator.prototype.getNext = function () {
+        if (!this._curIdx) {
+            return this.getFirstNode();
+        }
+
+        this._curIdx = this._curIdx <= this._lastIdx ? this._curIdx + 1 : this._curIdx;
+
+        if (this._curIdx <= this._lastIdx && this._curNode) {
+            this._curNode = this._vtree.getNextNode(this._curNode, this._visibleOnly);
+        } else {
+            this._curNode = null;
+        }
+        return this._curNode;
+    };
+
     VTree.prototype._root = null;
+    /**
+     * The number of nodes in the vtree. Root node is not counted
+     * @type {Number}
+     * @private
+     */
+    VTree.prototype._nodeCount = 0;
     VTree.prototype._rowStyle = null;
     VTree.prototype._paddingLeft = '0px';
     VTree.prototype._containerWidth = 0;
@@ -199,6 +249,7 @@
         node.previous = null;
         node.next = null;
 
+        ++this._nodeCount;
         if (node.expanded && node.firstChild) {
             this._updateRowCount();
         } else if (parent.expanded) {
@@ -237,6 +288,7 @@
             parent.lastChild = child;
         }
 
+        ++this._nodeCount;
         if (child.expanded && child.firstChild) {
             this._updateRowCount();
         } else if (parent.expanded) {
@@ -252,36 +304,33 @@
             var lastIndex = Math.min(this._rowCount, index + this._cachedRows);
             var fragment = document.createDocumentFragment();
 
-            // TODO: change it with traversing through tree from node with idx1 to node with idx2 without getting
-            // node by idx each time
-            for (var i = index; i < lastIndex; i++) {
-                var node = this._getNodeByIdx(i + 1, true);
-                if (node) {
-                    var row = document.createElement('div');
-                    row.classList.add(this._rowStyle);
-                    row.style.top = (i * this._rowHeight) + 'px';
-                    var padding = this._paddingLeft * (node.getNestLevel() - 1);
-                    row.style.paddingLeft = padding.toString() + 'px';
-                    // TODO: calculate and use this._expandedWidth
-                    var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
-                    row.style.width = width.toString() + 'px';
-                    if (node.expanded || node.firstChild) {
-                        var expandElem = document.createElement('span');
-                        if (node.expanded) {
-                            expandElem.id = VTree.COLLAPSE_ID;
-                        } else { // node.firstChild
-                            expandElem.id = VTree.EXPAND_ID;
-                        }
-                        if (this._expandStyle) {
-                            expandElem.classList.add(this._expandStyle);
-                        }
-                        this._expandRenderer(expandElem);
-                        row.appendChild(expandElem);
-                        row.addEventListener('click', node.handleExpand.bind(node));
+            var it = new VTree.IdxIterator(this, index + 1, lastIndex, true);
+            var i = index;
+            for (var node = it.getFirstNode(); node != null; node = it.getNext(), ++i) {
+                var row = document.createElement('div');
+                row.classList.add(this._rowStyle);
+                row.style.top = (i * this._rowHeight) + 'px';
+                var padding = this._paddingLeft * (node.getNestLevel() - 1);
+                row.style.paddingLeft = padding.toString() + 'px';
+                // TODO: calculate and use this._expandedWidth
+                var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
+                row.style.width = width.toString() + 'px';
+                if (node.expanded || node.firstChild) {
+                    var expandElem = document.createElement('span');
+                    if (node.expanded) {
+                        expandElem.id = VTree.COLLAPSE_ID;
+                    } else { // node.firstChild
+                        expandElem.id = VTree.EXPAND_ID;
                     }
-                    this._renderer(node, row);
-                    fragment.appendChild(row);
+                    if (this._expandStyle) {
+                        expandElem.classList.add(this._expandStyle);
+                    }
+                    this._expandRenderer(expandElem);
+                    row.appendChild(expandElem);
+                    row.addEventListener('click', node.handleExpand.bind(node));
                 }
+                this._renderer(node, row);
+                fragment.appendChild(row);
             }
 
             for (var j = 1, l = this._container.childNodes.length; j < l; j++) {
@@ -310,7 +359,7 @@
         this._rowCount = i;
     };
 
-    VTree.prototype._getNodeByIdx = function (idx, expandedOnly) {
+    VTree.prototype._getNodeByIdx = function (idx, visibleOnly) {
         var i = 0;
         var nodeRef = null;
         this._root.acceptChildren(function(node){
@@ -320,8 +369,41 @@
                 return false;
             }
             return true;
-        }, expandedOnly);
+        }, visibleOnly);
         return nodeRef;
+    };
+
+    VTree.prototype.getNextNode = function (node, visibleOnly) {
+        var startNode = node;
+        var nextNode = null;
+
+        if (visibleOnly) {
+            while ((startNode.parent instanceof TreeNode) && !startNode.parent.expanded) {
+                // Normally, initial node should be visible and we should not get here
+                startNode = startNode.parent;
+            }
+        }
+
+        if (startNode.firstChild && (!visibleOnly || startNode.expanded)) {
+            nextNode = startNode.firstChild;
+        }
+
+        if (!nextNode && startNode.next) {
+            nextNode = startNode.next;
+        }
+
+        if (!nextNode) {
+            for (var parentNode = startNode.parent;
+                 !nextNode && (parentNode instanceof TreeNode) && parentNode !== this._root;
+                 parentNode = parentNode.parent) {
+
+                if (parentNode.next) {
+                    nextNode = parentNode.next;
+                }
+            }
+        }
+
+        return nextNode;
     };
 
     _.TreeNode = TreeNode;
