@@ -140,6 +140,8 @@
         testRow.appendChild(testDownSep);
         this._downSepHeight = parseInt(getComputedStyle(testDownSep).height);
 
+        this._expandedWidth = container.scrollWidth;
+
         container.removeChild(testRow);
 
         if (expandStyle) {
@@ -392,9 +394,6 @@
                 row.style.top = (i * this._rowHeight).toString() + 'px';
                 var padding = this._paddingLeft * (node.getNestLevel() - 1);
                 row.style.paddingLeft = padding.toString() + 'px';
-                // TODO: calculate and use this._expandedWidth
-                var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
-                row.style.width = width.toString() + 'px';
                 if (node.expanded || node.firstChild) {
                     var expandElem = document.createElement('span');
                     if (node.expanded) {
@@ -425,7 +424,6 @@
                 freeZone.style.position = 'absolute';
                 freeZone.style.height = this._freeHeight.toString() + 'px';
                 freeZone.style.top = (lastIndex * this._rowHeight).toString() + 'px';
-                freeZone.style.width = this._containerWidth.toString() + 'px';
                 freeZone.addEventListener('dragenter', this.nodeDragEnter.bind(this, this._root));
                 freeZone.addEventListener('dragover', this.nodeDragOver.bind(this, this._root));
                 freeZone.addEventListener('dragleave', this.nodeDragLeave.bind(this, this._root));
@@ -439,6 +437,13 @@
             }
 
             this._container.appendChild(fragment);
+            this._expandedWidth = this._container.scrollWidth;
+            for (var j = 1, l = this._container.childNodes.length; j < l; j++) {
+                if (this._container.childNodes[j].style.display !== 'none') {
+                    var style = getComputedStyle(this._container.childNodes[j]);
+                    this._container.childNodes[j].style.width = (this._expandedWidth - parseInt(style.paddingLeft)).toString() + 'px';
+                }
+            }
         }
     };
 
@@ -657,8 +662,7 @@
     VTree.prototype.rowAddSep = function (row, sepId, padding) {
         var sep = document.createElement('div');
         sep.id = sepId;
-        // TODO: calculate and use this._expandedWidth
-        var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
+        var width = this._expandedWidth - padding;
         if (sepId == VTree.UPPER_SEP_ID) {
             sep.classList.add(this._upSeparatorStyle);
             sep.style.top = '0px';
