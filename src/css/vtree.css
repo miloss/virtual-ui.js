@@ -19,3 +19,25 @@
 .vexpand {
     color: blue;
 }
+
+.insertInto {
+    color: lightskyblue;
+}
+
+.up-separator {
+    position: absolute;
+    height: 3px;
+    color: mediumblue;
+    line-height: 2px;
+    border-top: solid 2px mediumblue;
+    pointer-events: none;
+}
+
+.down-separator {
+    position: absolute;
+    height: 3px;
+    color: mediumspringgreen;
+    line-height: 2px;
+    border-bottom: solid 2px mediumspringgreen;
+    pointer-events: none;
+}
