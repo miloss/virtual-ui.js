@@ -36,8 +36,8 @@
 .down-separator {
     position: absolute;
     height: 3px;
-    color: mediumspringgreen;
+    color: mediumblue;
     line-height: 2px;
-    border-bottom: solid 2px mediumspringgreen;
+    border-bottom: solid 2px mediumblue;
     pointer-events: none;
 }

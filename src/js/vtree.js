@@ -428,6 +428,7 @@
                 freeZone.style.width = this._containerWidth.toString() + 'px';
                 freeZone.addEventListener('dragenter', this.nodeDragEnter.bind(this, this._root));
                 freeZone.addEventListener('dragover', this.nodeDragOver.bind(this, this._root));
+                freeZone.addEventListener('dragleave', this.nodeDragLeave.bind(this, this._root));
                 freeZone.addEventListener('drop', this.nodeDrop.bind(this, this._root));
                 fragment.appendChild(freeZone);
             }
@@ -531,8 +532,8 @@
 
     VTree.prototype.nodeDragLeave = function (node, e) {
         e.preventDefault();
-        if (this.dropHereAllowed(node) && node !== this._root) {
-            if (e.currentTarget._specCounter <= 1) {
+        if (this._dropHereAllowed(node)) {
+            if (!e.currentTarget._specCounter || e.currentTarget._specCounter <= 1) {
                 e.currentTarget._specCounter = 0;
                 e.currentTarget.classList.remove(this._insertIntoStyle);
                 this.rowRemoveSep(e.currentTarget, VTree.LOWER_SEP_ID);
@@ -546,33 +547,60 @@
 
     VTree.prototype.nodeDrop = function (node, e) {
         e.currentTarget._specCounter = 0;
-        if (this.dropHereAllowed(node)) {
-            this.beginUpdate();
-            this.removeNode(this._dragNode);
-            this.appendNode(node, this._dragNode);
-            this._dragNode = null;
-            this.endUpdate();
+        if (this._dropHereAllowed(node)) {
+            e.currentTarget.classList.remove(this._insertIntoStyle);
+            this.rowRemoveSep(e.currentTarget, VTree.LOWER_SEP_ID);
+            this.rowRemoveSep(e.currentTarget, VTree.UPPER_SEP_ID);
+
+            if (this._dropUpperAllowed(node, e)) {
+                this.beginUpdate();
+                this.removeNode(this._dragNode);
+                if (node !== this._root) {
+                    this.insertNodeBefore(node, this._dragNode);
+                } else {
+                    // this._root node we may have only if release mouse on the free zone below all nodes,
+                    // so just append it
+                    this.appendNode(node, this._dragNode);
+                }
+                this._dragNode = null;
+                this.endUpdate();
+            } else if (this._dropLowerAllowed(node, e)) {
+                this.beginUpdate();
+                this.removeNode(this._dragNode);
+                this.insertNodeAfter(node, this._dragNode);
+                this._dragNode = null;
+                this.endUpdate();
+            } else if (this._dropInsideAllowed(node, e)){
+                this.beginUpdate();
+                this.removeNode(this._dragNode);
+                this.appendNode(node, this._dragNode);
+                this._dragNode = null;
+                this.endUpdate();
+            }
         }
         e.stopPropagation();
         return false;
     };
 
-    VTree.prototype.dropHereAllowed = function (node) {
+    VTree.prototype._dropHereAllowed = function (node) {
         return this._dragNode && this._dragNode !== node && !this.nodeHasSomeParent(node, this._dragNode);
     };
 
-    VTree.prototype.dropUpperAllowed = function (node, e) {
-        return e.offsetY <= this._freeHeight &&
-            this._dragNode && this._dragNode !== node && !this.nodeHasSomeParent(node, this._dragNode);
+    VTree.prototype._dropUpperAllowed = function (node, e) {
+        return e.offsetY <= this._freeHeight && node !== this._dragNode.next;
     };
 
-    VTree.prototype.dropLowerAllowed = function (node, e) {
-        return e.offsetY >= this._rowHeight - this._freeHeight && !node.expanded &&
-            this._dragNode && this._dragNode !== node && !this.nodeHasSomeParent(node, this._dragNode);
+    VTree.prototype._dropLowerAllowed = function (node, e) {
+        return e.offsetY >= this._rowHeight - this._freeHeight && !node.expanded
+            && node !== this._root && this._dragNode !== node.next;
+    };
+
+    VTree.prototype._dropInsideAllowed = function (node, e) {
+        return !(this._dragNode.parent === node && node.lastChild === this._dragNode);
     };
 
     VTree.prototype.drawUpperSeparator = function (node, e) {
-        var padding = this._paddingLeft * (node.getNestLevel() - 1);
+        var padding = node === this._root ? 0 : this._paddingLeft * (node.getNestLevel() - 1);
         this.rowAddSep(e.currentTarget, VTree.UPPER_SEP_ID, padding);
     };
 
@@ -583,33 +611,35 @@
 
     VTree.prototype.updateMarks = function (node, e, updateCounter) {
         var row = e.currentTarget;
-        if (this.dropUpperAllowed(node, e)) {
-            if (!this.rowHasSep(row, VTree.UPPER_SEP_ID)) {
+        if (this._dropHereAllowed(node)) {
+            if (this._dropUpperAllowed(node, e)) {
+                if (!this.rowHasSep(row, VTree.UPPER_SEP_ID)) {
+                    this.rowRemoveSep(row, VTree.LOWER_SEP_ID);
+
+                    row._specCounter = 0;
+                    row.classList.remove(this._insertIntoStyle);
+
+                    this.drawUpperSeparator(node, e);
+                }
+            } else if (this._dropLowerAllowed(node, e)) {
+                if (!this.rowHasSep(row, VTree.LOWER_SEP_ID)) {
+                    this.rowRemoveSep(row, VTree.UPPER_SEP_ID);
+
+                    row._specCounter = 0;
+                    row.classList.remove(this._insertIntoStyle);
+
+                    this.drawLowerSeparator(node, e);
+                }
+            } else if (node !== this._root && this._dropInsideAllowed(node, e)) {
                 this.rowRemoveSep(row, VTree.LOWER_SEP_ID);
-
-                row._specCounter = 0;
-                row.classList.remove(this._insertIntoStyle);
-
-                this.drawUpperSeparator(node, e);
-            }
-        } else if (this.dropLowerAllowed(node, e)) {
-            if (!this.rowHasSep(row, VTree.LOWER_SEP_ID)) {
                 this.rowRemoveSep(row, VTree.UPPER_SEP_ID);
-
-                row._specCounter = 0;
-                row.classList.remove(this._insertIntoStyle);
-
-                this.drawLowerSeparator(node, e);
-            }
-        } else if (this.dropHereAllowed(node) && node !== this._root) {
-            this.rowRemoveSep(row, VTree.LOWER_SEP_ID);
-            this.rowRemoveSep(row, VTree.UPPER_SEP_ID);
-            row.classList.add(this._insertIntoStyle);
-            if (updateCounter) {
-                if (!row._specCounter) {
-                    row._specCounter = 1;
-                } else {
-                    ++row._specCounter;
+                row.classList.add(this._insertIntoStyle);
+                if (updateCounter) {
+                    if (!row._specCounter) {
+                        row._specCounter = 1;
+                    } else {
+                        ++row._specCounter;
+                    }
                 }
             }
         }
@@ -631,13 +661,11 @@
         var width = this._containerWidth > padding ? this._containerWidth - padding : this._expandedWidth;
         if (sepId == VTree.UPPER_SEP_ID) {
             sep.classList.add(this._upSeparatorStyle);
-            //sep.style.paddingLeft = padding.toString() + 'px';
             sep.style.top = '0px';
             sep.style.width = width.toString() + 'px';
             row.insertBefore(sep, row.firstChild);
         } else {
             sep.classList.add(this._downSeparatorStyle);
-            //sep.style.paddingLeft = padding.toString() + 'px';
             sep.style.top = (this._rowHeight - this._downSepHeight).toString() + 'px';
             sep.style.width = width.toString() + 'px';
             row.appendChild(sep);
