@@ -8,11 +8,6 @@
 <body>
 <script type="text/javascript" src="js/vlist.js"></script>
 <script type="text/javascript" src="js/vtree.js"></script>
-<style>
-    .vrow {
-        border-bottom: solid 1px #dbd9d9;
-    }
-</style>
 
 <div>
     <button onclick="tree.refresh();">Refresh</button>
@@ -25,7 +20,6 @@
 <script>
     function renderer(node, row) {
         row.innerHTML += 'NODE #' + node.id;
-        //row.style.color = '#'+Math.floor(Math.random()*16777215).toString(16);
     }
 
     function TreeNodeNamed(id) {

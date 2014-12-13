@@ -15,6 +15,7 @@
     line-height: 30px;
     vertical-align: middle;
     padding-left: 50px;
+    border-bottom: solid 1px #dbd9d9;
 }
 
 .vexpand {
