@@ -172,6 +172,12 @@
         return "[TreeNode]";
     };
 
+    function TreeNodeNamed(id) {
+        this.id = id;
+    }
+    TreeNodeNamed.prototype = Object.create(TreeNode.prototype);
+    TreeNodeNamed.prototype.id = null;
+
     // -----------------------------------------------------------------------------------------------------------------
     // VTree Class
     // -----------------------------------------------------------------------------------------------------------------
@@ -185,7 +191,8 @@
      * @class VTree
      * @constructor
      */
-    function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle) {
+    function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle,
+                   dropAllowedCallback, dropCallback) {
         // Note: initialization order is important here
         container.style.overflow = 'scroll';
         this._containerWidth = parseInt(container.clientWidth);
@@ -230,6 +237,14 @@
 
         if (expandRenderer) {
             this._expandRenderer = expandRenderer;
+        }
+
+        if (dropAllowedCallback) {
+            this._dropAllowedCallback = dropAllowedCallback;
+        }
+
+        if (dropCallback) {
+            this._dropCallback = dropCallback;
         }
     }
 
@@ -392,6 +407,9 @@
     VTree.prototype._insertIntoStyle = null;
     VTree.prototype._downSepHeight = 0;
 
+    VTree.prototype._dropAllowedCallback = null;
+    VTree.prototype._dropCallback = null;
+
     /** override */
     VTree.prototype.endUpdate = function () {
         if (--this._updateCounter === 0) {
@@ -466,6 +484,10 @@
         return this._insertNodeBefore(parent || this._root, null, node);
     };
 
+    VTree.prototype.prependNode = function (parent, node) {
+        return this._insertNodeBefore(parent || this._root, parent ? parent.firstChild : this._root.firstChild, node);
+    };
+
     VTree.prototype.insertNodeBefore = function (reference, node) {
         return this._insertNodeBefore(reference.parent, reference, node);
     };
@@ -514,6 +536,14 @@
         if (parent.expanded) {
             this.requestInvalidation();
         }
+    };
+
+    VTree.prototype.clean = function () {
+        // TODO: may be implement one by one nodes removal
+        this._root = new TreeNode();
+        this._root.expanded = true;
+        this._root.parent = this;
+        this.requestInvalidation();
     };
 
     /** override */
@@ -721,10 +751,16 @@
                 this.beginUpdate();
                 this.removeNode(this._dragNode);
                 if (node !== this._root) {
+                    if (this._dropCallback) {
+                        this._dropCallback(node.parent, node, this._dragNode);
+                    }
                     this.insertNodeBefore(node, this._dragNode);
                 } else {
                     // this._root node we may have only if release mouse on the free zone below all nodes,
                     // so just append it
+                    if (this._dropCallback) {
+                        this._dropCallback(this._root, null, this._dragNode);
+                    }
                     this.appendNode(node, this._dragNode);
                 }
                 this._dragNode = null;
@@ -732,12 +768,18 @@
             } else if (this._dropLowerAllowed(node, e)) {
                 this.beginUpdate();
                 this.removeNode(this._dragNode);
+                if (this._dropCallback) {
+                    this._dropCallback(node.parent, node.next ? node.next : null, this._dragNode);
+                }
                 this.insertNodeAfter(node, this._dragNode);
                 this._dragNode = null;
                 this.endUpdate();
             } else if (this._dropInsideAllowed(node, e)){
                 this.beginUpdate();
                 this.removeNode(this._dragNode);
+                if (this._dropCallback) {
+                    this._dropCallback(node.parent || this._root, null, this._dragNode);
+                }
                 this.appendNode(node, this._dragNode);
                 this._dragNode = null;
                 this.endUpdate();
@@ -752,16 +794,30 @@
     };
 
     VTree.prototype._dropUpperAllowed = function (node, e) {
-        return e.offsetY <= this._freeHeight && node !== this._dragNode.next;
+        var res = e.offsetY <= this._freeHeight && node !== this._dragNode.next;
+        if (res && this._dropAllowedCallback) {
+            res = node !== this._root && this._dropAllowedCallback(node.parent, node, this._dragNode) ||
+                node === this._root && this._dropAllowedCallback(this._root, null, this._dragNode);
+        }
+        return res;
     };
 
     VTree.prototype._dropLowerAllowed = function (node, e) {
-        return e.offsetY >= this._rowHeight - this._freeHeight && !node.expanded
+        var res = e.offsetY >= this._rowHeight - this._freeHeight && !node.expanded
             && node !== this._root && this._dragNode !== node.next;
+
+        if (res && this._dropAllowedCallback) {
+            res = this._dropAllowedCallback(node.parent, node.next ? node.next : null, this._dragNode);
+        }
+        return res;
     };
 
     VTree.prototype._dropInsideAllowed = function (node, e) {
-        return !(this._dragNode.parent === node && node.lastChild === this._dragNode);
+        var res = !(this._dragNode.parent === node && node.lastChild === this._dragNode);
+        if (res && this._dropAllowedCallback) {
+            res = this._dropAllowedCallback(node.parent || this._root, null, this._dragNode);
+        }
+        return res;
     };
 
     VTree.prototype._drawUpperSeparator = function (node, e) {
@@ -849,5 +905,6 @@
     };
 
     _.TreeNode = TreeNode;
+    _.TreeNodeNamed = TreeNodeNamed;
     _.VTree = VTree;
 })(this);
