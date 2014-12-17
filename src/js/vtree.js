@@ -431,6 +431,7 @@
 
     VTree.prototype.invalidate = function () {
         this._updateRowCount();
+        this._updateVisibleRows();
         this._updateScroller();
 
         if (this._scrollTimerId === null) {
