@@ -192,17 +192,14 @@
      * @constructor
      */
     function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle,
-                   dropAllowedCallback, dropCallback) {
+                   dropAllowedCallback, dropCallback, clickCallback) {
         // Note: initialization order is important here
-        container.style.overflow = 'scroll';
-        this._containerWidth = parseInt(container.clientWidth);
         this._root = new TreeNode();
         this._root.expanded = true;
         this._root.parent = this;
 
         VList.call(this, container, renderer, 0, 0);
 
-        var testRow = document.createElement('div');
         this._rowStyle = nodeStyle ? nodeStyle : VTree.DEFAULT_ROW_STYLE;
         // TODO: support changing the default values via parameters passing if will be needed
         this._freeHeight = VTree.DEFAULT_FREEZONE_HEIGHT;
@@ -210,26 +207,7 @@
         this._upSeparatorStyle = VTree.DEFAULT_UP_SEPARATOR_STYLE;
         this._downSeparatorStyle = VTree.DEFAULT_DOWN_SEPARATOR_STYLE;
 
-        testRow.classList.add(this._rowStyle);
-        testRow.style.display = 'none';
-        container.appendChild(testRow);
-        var style = getComputedStyle(testRow);
-
-        var padding = parseInt(style.paddingLeft);
-        this._paddingLeft = padding ? padding : VTree.DEFAULT_PADDING;
-
-        var lineHeight = parseInt(style.lineHeight);
-        this._rowHeight = lineHeight ? lineHeight : VTree.DEFAULT_LINE_HEIGHT;
-
-        var testDownSep = document.createElement('div');
-        testDownSep.classList.add(this._downSeparatorStyle);
-        testDownSep.style.display = 'none';
-        testRow.appendChild(testDownSep);
-        this._downSepHeight = parseInt(getComputedStyle(testDownSep).height);
-
-        this._expandedWidth = container.scrollWidth;
-
-        container.removeChild(testRow);
+        this._initComputedVals();
 
         if (expandStyle) {
             this._expandStyle = expandStyle;
@@ -245,6 +223,10 @@
 
         if (dropCallback) {
             this._dropCallback = dropCallback;
+        }
+
+        if (clickCallback) {
+            this._clickCallback = clickCallback;
         }
     }
 
@@ -409,12 +391,19 @@
 
     VTree.prototype._dropAllowedCallback = null;
     VTree.prototype._dropCallback = null;
+    VTree.prototype._clickCallback = null;
 
     /** override */
     VTree.prototype.endUpdate = function () {
         if (--this._updateCounter === 0) {
             this.invalidate();
         }
+    };
+
+    /** override */
+    VTree.prototype.refresh = function () {
+        this._initComputedVals();
+        this.requestInvalidation();
     };
 
     VTree.prototype.requestInvalidation = function () {
@@ -579,8 +568,8 @@
                     }
                     this._expandRenderer(expandElem);
                     row.appendChild(expandElem);
-                    row.addEventListener('click', node.handleExpand.bind(node));
                 }
+                row.addEventListener('click', this._nodeClick.bind(this, node));
                 row.setAttribute('draggable', true);
                 row.addEventListener('dragstart', this._nodeDragStart.bind(this, node));
                 row.addEventListener('dragenter', this._nodeDragEnter.bind(this, node));
@@ -618,6 +607,31 @@
                 }
             }
         }
+    };
+
+    VTree.prototype._initComputedVals = function () {
+        this._containerWidth = parseInt(this._container.clientWidth);
+        var testRow = document.createElement('div');
+        testRow.classList.add(this._rowStyle);
+        testRow.style.display = 'none';
+        this._container.appendChild(testRow);
+        var style = getComputedStyle(testRow);
+
+        var padding = parseInt(style.paddingLeft);
+        this._paddingLeft = padding !== null ? padding : VTree.DEFAULT_PADDING;
+
+        var lineHeight = parseInt(style.lineHeight);
+        this._rowHeight = lineHeight ? lineHeight : VTree.DEFAULT_LINE_HEIGHT;
+
+        var testDownSep = document.createElement('div');
+        testDownSep.classList.add(this._downSeparatorStyle);
+        testDownSep.style.display = 'none';
+        testRow.appendChild(testDownSep);
+        this._downSepHeight = parseInt(getComputedStyle(testDownSep).height);
+
+        this._expandedWidth = this._container.scrollWidth;
+
+        this._container.removeChild(testRow);
     };
 
     VTree.prototype._insertNodeBefore = function (parent, reference, child) {
@@ -710,6 +724,14 @@
         return res;
     };
 
+    VTree.prototype._nodeClick = function (node, e) {
+        if ((node.expanded || node.firstChild) && (e.target.id === VTree.COLLAPSE_ID || e.target.id === VTree.EXPAND_ID)) {
+            node.handleExpand(e);
+        } else if (this._clickCallback) {
+            this._clickCallback(node);
+        }
+    };
+
     VTree.prototype._nodeDragStart = function (node, e) {
         this._dragNode = node;
     };
@@ -779,7 +801,7 @@
                 this.beginUpdate();
                 this.removeNode(this._dragNode);
                 if (this._dropCallback) {
-                    this._dropCallback(node.parent || this._root, null, this._dragNode);
+                    this._dropCallback(node, null, this._dragNode);
                 }
                 this.appendNode(node, this._dragNode);
                 this._dragNode = null;
@@ -816,7 +838,7 @@
     VTree.prototype._dropInsideAllowed = function (node, e) {
         var res = !(this._dragNode.parent === node && node.lastChild === this._dragNode);
         if (res && this._dropAllowedCallback) {
-            res = this._dropAllowedCallback(node.parent || this._root, null, this._dragNode);
+            res = this._dropAllowedCallback(node, null, this._dragNode);
         }
         return res;
     };
