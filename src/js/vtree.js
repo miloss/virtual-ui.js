@@ -192,7 +192,9 @@
      * @constructor
      */
     function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle,
-                   dropAllowedCallback, dropCallback, clickCallback) {
+                   separatorRenderer, insertIntoStyle,
+                   dropAllowedCallback, dropCallback, clickCallback,
+                   upSeparatorSpan1Style, upSeparatorSpan2Style, downSeparatorSpan1Style, downSeparatorSpan2Style) {
         // Note: initialization order is important here
         this._root = new TreeNode();
         this._root.expanded = true;
@@ -203,9 +205,9 @@
         this._rowStyle = nodeStyle ? nodeStyle : VTree.DEFAULT_ROW_STYLE;
         // TODO: support changing the default values via parameters passing if will be needed
         this._freeHeight = VTree.DEFAULT_FREEZONE_HEIGHT;
-        this._insertIntoStyle = VTree.DEFAULT_INSERTINTO_STYLE;
-        this._upSeparatorStyle = VTree.DEFAULT_UP_SEPARATOR_STYLE;
-        this._downSeparatorStyle = VTree.DEFAULT_DOWN_SEPARATOR_STYLE;
+        this._insertIntoStyle = insertIntoStyle ? insertIntoStyle : VTree.DEFAULT_INSERTINTO_STYLE;
+        this._upSeparatorSpan1Style = upSeparatorSpan1Style ? upSeparatorSpan1Style : VTree.DEFAULT_UP_SEPARATOR_SPAN1_STYLE;
+        this._downSeparatorSpan1Style = downSeparatorSpan1Style ? downSeparatorSpan1Style : VTree.DEFAULT_DOWN_SEPARATOR_SPAN1_STYLE;
 
         this._initComputedVals();
 
@@ -215,6 +217,18 @@
 
         if (expandRenderer) {
             this._expandRenderer = expandRenderer;
+        }
+
+        if (separatorRenderer) {
+            this._separatorRenderer = separatorRenderer;
+        }
+
+        if (upSeparatorSpan2Style) {
+            this._upSeparatorSpan2Style = upSeparatorSpan2Style;
+        }
+
+        if (downSeparatorSpan2Style) {
+            this._downSeparatorSpan2Style = downSeparatorSpan2Style;
         }
 
         if (dropAllowedCallback) {
@@ -265,13 +279,13 @@
      * The default 'insert above the current node' div element style name
      * @type {String}
      */
-    VTree.DEFAULT_UP_SEPARATOR_STYLE = 'up-separator';
+    VTree.DEFAULT_UP_SEPARATOR_SPAN1_STYLE = 'up-separator-span1';
 
     /**
      * The default 'insert below the current node' div element style name
      * @type {String}
      */
-    VTree.DEFAULT_DOWN_SEPARATOR_STYLE = 'down-separator';
+    VTree.DEFAULT_DOWN_SEPARATOR_SPAN1_STYLE = 'down-separator-span1';
 
     /**
      * The collapse visible children of the current node snap element identifier
@@ -693,6 +707,32 @@
         }
     };
 
+    VTree.prototype._separatorRenderer = function (sep, paddingLevel) {
+        var width = this._expandedWidth - this._paddingLeft * paddingLevel;
+        sep.style.width = width.toString() + 'px';
+        sep.style.height = this._freeHeight.toString() + 'px';
+        sep.style.position = 'absolute';
+        sep.style.pointerEvents = 'none';
+        var span1 = document.createElement('span');
+        var span2Style = null;
+        if (sep.id == VTree.UPPER_SEP_ID) {
+            span1.classList.add(this._upSeparatorSpan1Style);
+            span2Style = this._upSeparatorSpan2Style ? this._upSeparatorSpan2Style : null;
+            sep.style.top = '0px';
+        } else {
+            span1.classList.add(this._downSeparatorSpan1Style);
+            span2Style = this._downSeparatorSpan2Style ? this._downSeparatorSpan2Style : null;
+            sep.style.top = (this._rowHeight - this._freeHeight).toString() + 'px';
+        }
+        sep.appendChild(span1);
+        var style = getComputedStyle(span1);
+        if (span2Style) {
+            var span2 = document.createElement('span');
+            span2.classList.add(span2Style);
+            sep.appendChild(span2);
+        }
+    };
+
     VTree.prototype._updateRowCount = function () {
         var i = 0;
         this._root.acceptChildren(function(node){
@@ -844,13 +884,13 @@
     };
 
     VTree.prototype._drawUpperSeparator = function (node, e) {
-        var padding = node === this._root ? 0 : this._paddingLeft * (node.getNestLevel() - 1);
-        this._rowAddSep(e.currentTarget, VTree.UPPER_SEP_ID, padding);
+        var paddingLevel = node === this._root ? 0 : node.getNestLevel() - 1;
+        this._rowAddSep(e.currentTarget, VTree.UPPER_SEP_ID, paddingLevel);
     };
 
     VTree.prototype._drawLowerSeparator = function (node, e) {
-        var padding = this._paddingLeft * (node.getNestLevel() - 1);
-        this._rowAddSep(e.currentTarget, VTree.LOWER_SEP_ID, padding);
+        var paddingLevel = node.getNestLevel() - 1;
+        this._rowAddSep(e.currentTarget, VTree.LOWER_SEP_ID, paddingLevel);
     };
 
     VTree.prototype._updateMarks = function (node, e, updateCounter) {
@@ -898,19 +938,13 @@
         return false;
     };
 
-    VTree.prototype._rowAddSep = function (row, sepId, padding) {
+    VTree.prototype._rowAddSep = function (row, sepId, paddingLevel) {
         var sep = document.createElement('div');
         sep.id = sepId;
-        var width = this._expandedWidth - padding;
+        this._separatorRenderer(sep, paddingLevel);
         if (sepId == VTree.UPPER_SEP_ID) {
-            sep.classList.add(this._upSeparatorStyle);
-            sep.style.top = '0px';
-            sep.style.width = width.toString() + 'px';
             row.insertBefore(sep, row.firstChild);
         } else {
-            sep.classList.add(this._downSeparatorStyle);
-            sep.style.top = (this._rowHeight - this._downSepHeight).toString() + 'px';
-            sep.style.width = width.toString() + 'px';
             row.appendChild(sep);
         }
     };
