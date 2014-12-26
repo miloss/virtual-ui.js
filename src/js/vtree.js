@@ -192,7 +192,7 @@
      * @constructor
      */
     function VTree(container, renderer, nodeStyle, expandRenderer, expandStyle,
-                   separatorRenderer, insertIntoStyle,
+                   separatorRenderer, freeHeight, insertIntoStyle,
                    dropAllowedCallback, dropCallback, clickCallback,
                    upSeparatorSpan1Style, upSeparatorSpan2Style, downSeparatorSpan1Style, downSeparatorSpan2Style) {
         // Note: initialization order is important here
@@ -203,8 +203,7 @@
         VList.call(this, container, renderer, 0, 0);
 
         this._rowStyle = nodeStyle ? nodeStyle : VTree.DEFAULT_ROW_STYLE;
-        // TODO: support changing the default values via parameters passing if will be needed
-        this._freeHeight = VTree.DEFAULT_FREEZONE_HEIGHT;
+        this._freeHeight = freeHeight ? freeHeight : VTree.DEFAULT_FREEZONE_HEIGHT;
         this._insertIntoStyle = insertIntoStyle ? insertIntoStyle : VTree.DEFAULT_INSERTINTO_STYLE;
         this._upSeparatorSpan1Style = upSeparatorSpan1Style ? upSeparatorSpan1Style : VTree.DEFAULT_UP_SEPARATOR_SPAN1_STYLE;
         this._downSeparatorSpan1Style = downSeparatorSpan1Style ? downSeparatorSpan1Style : VTree.DEFAULT_DOWN_SEPARATOR_SPAN1_STYLE;
