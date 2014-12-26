@@ -549,6 +549,10 @@
         this.requestInvalidation();
     };
 
+    VTree.prototype.acceptChildren = function (visitor, visibleOnly, reverse, any) {
+        return this._root.acceptChildren(visitor, visibleOnly, reverse, any);
+    };
+
     /** override */
     VList.prototype._updateScroller = function () {
         this._scroller.style.height = (this._rowCount * this._rowHeight + this._freeHeight).toString() + 'px';

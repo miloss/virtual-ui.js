@@ -22,12 +22,6 @@
         row.innerHTML += 'NODE #' + node.id;
     }
 
-    function TreeNodeNamed(id) {
-        this.id = id;
-    }
-    TreeNodeNamed.prototype = Object.create(TreeNode.prototype);
-    TreeNodeNamed.prototype.id = null;
-
     var tree = new VTree(document.getElementById('container'), renderer, 'vrow', null, 'vexpand');
     tree.beginUpdate();
     for (var i = 0; i < 2; ++i) {
