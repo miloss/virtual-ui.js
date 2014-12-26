@@ -155,7 +155,7 @@
     };
 
     VList.prototype._cleanViewport = function () {
-        var nodesToClean = this._container.querySelectorAll('.vrow[data-clean]');
+        var nodesToClean = this._container.querySelectorAll('div[data-clean]');
         for (var i = 0, l = nodesToClean.length; i < l; i++) {
             this._container.removeChild(nodesToClean[i]);
         }
