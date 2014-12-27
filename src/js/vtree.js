@@ -201,6 +201,8 @@
         this._root.parent = this;
 
         VList.call(this, container, renderer, 0, 0);
+        
+        this._container.classList.add('vtree');
 
         this._rowStyle = nodeStyle ? nodeStyle : VTree.DEFAULT_ROW_STYLE;
         this._freeHeight = freeHeight ? freeHeight : VTree.DEFAULT_FREEZONE_HEIGHT;
