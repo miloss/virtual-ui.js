@@ -12,6 +12,7 @@
         this._container = container;
         this._container.style.overflow = 'auto';
         this._container.style.position = 'relative';
+        this._container.classList.add('vlist');
         this._container.appendChild(this._scroller);
         this._container.addEventListener('scroll', this._onScroll.bind(this));
 
