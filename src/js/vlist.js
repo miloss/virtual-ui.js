@@ -133,6 +133,11 @@
     };
 
     VList.prototype._renderViewport = function (index) {
+        for (var j = 1, l = this._container.childNodes.length; j < l; j++) {
+            this._container.childNodes[j].style.display = 'none';
+            this._container.childNodes[j].setAttribute('data-clean', '');
+        }
+
         if (this._rowCount && this._renderer && this._rowHeight) {
             var lastIndex = Math.min(this._rowCount, index + this._cachedRows);
 
@@ -144,11 +149,6 @@
                 row.style.top = (i * this._rowHeight) + 'px';
                 this._renderer(i, row);
                 fragment.appendChild(row);
-            }
-
-            for (var j = 1, l = this._container.childNodes.length; j < l; j++) {
-                this._container.childNodes[j].style.display = 'none';
-                this._container.childNodes[j].setAttribute('data-clean', '');
             }
 
             this._container.appendChild(fragment);
