@@ -533,7 +533,7 @@
         } else if (parent.expanded) {
             --this._rowCount;
         }
-        if (parent.expanded && !parent.firstChild) {
+        if (parent.expanded && !parent.firstChild && parent !== this._root) {
             parent.expanded = false;
             parent.handleChange(TreeNode._Change.ExpandedRemoved, parent);
         }
@@ -545,6 +545,8 @@
 
     VTree.prototype.clean = function () {
         // TODO: may be implement one by one nodes removal
+        this._nodeCount = 0;
+        this._rowCount = 0;
         this._root = new TreeNode();
         this._root.expanded = true;
         this._root.parent = this;
